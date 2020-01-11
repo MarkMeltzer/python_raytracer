@@ -57,3 +57,18 @@ class Plane():
     def __init__(self, center, normal):
         self.center = center
         self.normal = normal.get_unit()
+
+class Scene():
+    def __init__(self, lights=[], scene_objects=[]):
+        self.lights = lights
+        self.scene_objects = scene_objects
+
+    def add_scene_object(self, scene_object):
+        self.scene_objects.append(scene_object)
+
+    def add_light(self, light):
+        self.lights.append(light)
+
+class Light():
+    def __init__(self, position):
+        self.position = position
