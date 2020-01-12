@@ -1,9 +1,19 @@
 import math
+import numpy as np
+
+class Camera():
+    def __init__(self, x_res, y_res):
+        self.x_res = x_res
+        self.y_res = y_res
+        self.screen_ratio = self.y_res / self.x_res
+
+    def get_pixel_array(self):
+        return np.zeros((self.y_res,self.x_res,3), dtype=np.uint8)
 
 class Ray():
     def __init__(self, origin, direction):
         self.origin = origin
-        self.direction = direction
+        self.direction = direction.get_unit()
     
     def get_point(self, t):
         return self.origin + self.direction * t
@@ -49,9 +59,13 @@ class Vec3():
         return str(self.get_tuple())
 
 class Sphere():
-    def __init__(self, center, radius):
+    def __init__(self, center, radius, color=Vec3(0,0,1).get_rgb()):
         self.center = center
         self.radius = radius
+        self.color = color
+
+    def __str__(self):
+        return f"sphere with color: {self.color}"
 
 class Plane():
     def __init__(self, center, normal):
@@ -59,15 +73,18 @@ class Plane():
         self.normal = normal.get_unit()
 
 class Scene():
-    def __init__(self, lights=[], scene_objects=[]):
-        self.lights = lights
-        self.scene_objects = scene_objects
+    def __init__(self):
+        self.lights = []
+        self.scene_objects = []
 
     def add_scene_object(self, scene_object):
         self.scene_objects.append(scene_object)
 
     def add_light(self, light):
         self.lights.append(light)
+
+    def __str__(self):
+        return f"lights: {self.lights}, objects: {self.scene_objects}"
 
 class Light():
     def __init__(self, position):

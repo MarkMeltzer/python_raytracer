@@ -1,6 +1,7 @@
 import random as rnd
 import numpy as np
 from PIL import Image
+import math
 from classes import *
 from helpers import *
 
@@ -37,22 +38,12 @@ def color(ray):
     color_vector = Vec3(1,1,1) * (1 - t) + Vec3(0.5,0.7,1.0) * t
     return color_vector.get_rgb()
 
-def main():
-    # set resolution and create pixel array
-    x_res = 500
-    y_res = 250
-    screen_ratio = y_res / x_res
-    img_array = np.zeros((y_res,x_res,3), dtype=np.uint8)
-
-    # create a scene
-    scene = Scene()
-    scene.add_light(Light(Vec3(1.5,1.5,0)))
-    scene.add_scene_object(Sphere(Vec3(0,0,-2), 0.5))
-    scene.add_scene_object(Sphere(Vec3(.5,.5,-1.5), 0.3))
+def render(scene, cam=Camera(200, 100)):
+    pixel_array = cam.get_pixel_array()
 
     # iterate over all pixels
-    for screen_y, world_y in enumerate(np.linspace(-1 * screen_ratio, 1 * screen_ratio, y_res)):
-        for screen_x, world_x in enumerate(np.linspace(-1, 1, x_res)):
+    for screen_y, world_y in enumerate(np.linspace(-1 * cam.screen_ratio, 1 * cam.screen_ratio, cam.y_res)):
+        for screen_x, world_x in enumerate(np.linspace(-1, 1, cam.x_res)):
             # shoot ray through pixel
             ray = Ray(Vec3(0,0,0), Vec3(world_x, world_y, -1))
 
@@ -68,14 +59,50 @@ def main():
 
             # if there was a hit draw it, else draw background
             if min_object:
-                col = distance_to_greyscale(min_t, 3,5)
+                # col = distance_to_greyscale(min_t, 3,5)
+                # col = min_object.color
+
+                # trace a ray from hitpoint towards the light
+                shadow_origin = ray.get_point(min_t)
+                shadow_direction = scene.lights[0].position - shadow_origin
+                shadow_ray = Ray(shadow_origin, shadow_direction)
+
+                # check for shadow
+                in_shadow = False
+                for scene_object in scene.scene_objects:
+                    if hit_sphere(shadow_ray, scene_object) and scene_object is not min_object:
+                        in_shadow = True
+
+                if in_shadow:
+                    col = Vec3(0,0,0).get_rgb()
+                else:
+                    col = min_object.color
             else:
                 col = color(ray)
-            img_array[y_res - 1 - screen_y][screen_x] = col
+            pixel_array[cam.y_res - 1 - screen_y][screen_x] = col
+    return pixel_array
 
-    # save final image
-    image = Image.fromarray(img_array)
-    image.save(f"test.png")
+def main():
+    # set resolution and create pixel array
+    camera = Camera(200, 100)
+
+    for i, angle in enumerate(np.linspace(0,math.pi*2,120)):
+        red_x = math.cos(angle)
+        red_z = math.sin(angle) - 1.5
+
+        # create a scene
+        scene = Scene() # why does this not create a new instance???
+        scene.add_light(Light(Vec3(0,1,-1.5)))
+        # scene.add_scene_object(Sphere(Vec3(0,1,-2), 0.25, Vec3(1,1,0).get_rgb())) # light sphere
+        scene.add_scene_object(Sphere(Vec3(0,-301,-2), 300)) # blue sphere
+        scene.add_scene_object(Sphere(Vec3(0,0,-2), 0.5, Vec3(0,1,0).get_rgb())) # green sphere
+        scene.add_scene_object(Sphere(Vec3(red_x,.5,red_z), 0.3, Vec3(1,0,0).get_rgb())) # red sphere
+
+        # save final image
+        image = Image.fromarray(render(scene, camera))
+        image.save(f"imgs/test{i}.png")
+
+        print(i)
 
 
 if __name__ == "__main__":
