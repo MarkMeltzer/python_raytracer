@@ -13,7 +13,9 @@ def hit_sphere(ray, sphere, t_min=0, t_max=50):
     discriminant = b * b - 4 * a * c
 
     if discriminant > 0:
-        t = (-b - math.sqrt(discriminant) / (2 * a))
+        t1 = (-b - math.sqrt(discriminant) / (2 * a))
+        t2 = (-b + math.sqrt(discriminant) / (2 * a))
+        t = min(t1, t2)
 
         # make sure we don't draw stuff behind us
         if t < t_min or t > t_max:
@@ -23,14 +25,14 @@ def hit_sphere(ray, sphere, t_min=0, t_max=50):
     else:
         return None
 
-def hit_plane(ray, plane):
-    denominator = plane.normal.dot(ray.direction)
-    if abs(denominator) > 0.0001:
-        t = (plane.center - ray.origin).dot(plane.normal) / denominator
+# def hit_plane(ray, plane):
+#     denominator = plane.normal.dot(ray.direction)
+#     if abs(denominator) > 0.0001:
+#         t = (plane.center - ray.origin).dot(plane.normal) / denominator
 
-        if t > 0.0001:
-            return t
-    return None
+#         if t > 0.0001:
+#             return t
+#     return None
 
 def color(ray):
     unit_dir = ray.direction.get_unit()
@@ -60,7 +62,8 @@ def render(scene, cam=Camera(200, 100)):
             # if there was a hit draw it, else draw background
             if min_object:
                 # trace a ray from hitpoint towards the light
-                shadow_origin = ray.get_point(min_t)
+                hit_point = ray.get_point(min_t)
+                shadow_origin = hit_point + min_object.get_normal(hit_point) * 0.0001
                 shadow_direction = scene.lights[0].position - shadow_origin
                 shadow_ray = Ray(shadow_origin, shadow_direction)
 
@@ -90,7 +93,7 @@ def main():
     # set resolution and create pixel array
     camera = Camera(200, 100)
 
-    for i, angle in enumerate(np.linspace(0,math.pi*2,240)):
+    for i, angle in enumerate(np.linspace(0,math.pi*2,60)):
         red_x = math.cos(angle)
         red_z = math.sin(angle) - 1.5
 

@@ -64,6 +64,10 @@ class Sphere():
         self.radius = radius
         self.color_vector = color_vector
 
+    def get_normal(self, point):
+        normal = (point - self.center).get_unit()
+        return normal
+
     def __str__(self):
         return f"sphere with color: {self.color_vector.get_rgb()}"
 
