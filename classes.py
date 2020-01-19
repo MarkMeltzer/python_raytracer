@@ -59,13 +59,13 @@ class Vec3():
         return str(self.get_tuple())
 
 class Sphere():
-    def __init__(self, center, radius, color=Vec3(0,0,1).get_rgb()):
+    def __init__(self, center, radius, color_vector=Vec3(0,0,1)):
         self.center = center
         self.radius = radius
-        self.color = color
+        self.color_vector = color_vector
 
     def __str__(self):
-        return f"sphere with color: {self.color}"
+        return f"sphere with color: {self.color_vector.get_rgb()}"
 
 class Plane():
     def __init__(self, center, normal):
@@ -89,3 +89,4 @@ class Scene():
 class Light():
     def __init__(self, position):
         self.position = position
+        self.render_sphere = Sphere(position, 0.1)
