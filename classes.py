@@ -43,32 +43,22 @@ class Ray():
             return None
 
     def trace(self, scene):
-
         # check for hits and get hits with lowest ray parameter
         hit_result = self.get_intersection(scene.scene_objects)
 
         # if there was a hit draw it, else draw background
         if hit_result:
-            # create a ray from hitpoint towards the light
-            hit_point = self.get_point(hit_result[0])
-            shadow_origin = hit_point + hit_result[1].get_normal(hit_point) * 0.0001
-            shadow_direction = scene.lights[0].position - shadow_origin
-            shadow_ray = Ray(shadow_origin, shadow_direction)
+            # trace a new ray in a random direction
+            new_origin = self.get_point(hit_result[0])
+            new_target = new_origin + hit_result[1].get_normal(new_origin) + helpers.random_point()
+            new_direction = (new_target - new_origin).get_unit()
+            new_ray = Ray(new_origin, new_direction)
 
-            # don't check for shadow intersection with self
-            scene_without_self = scene.scene_objects[:]
-            scene_without_self.remove(hit_result[1])
-
-            shadow_result = shadow_ray.get_intersection(scene_without_self, any_hit=True)
+            col  = new_ray.trace(scene) * 0.5
             
-            if shadow_result:
-                col = shadow_result[1].color_vector
-            else:
-                col = helpers.distance_to_greyscale(hit_result[0], min_value=1, max_value=10)
-                # col = min_object.color_vector.get_rgb()
-        elif self.hit_sphere(scene.lights[0].render_sphere):
-            # draw the light
-            col = Vec3(1,1,0)
+        # elif self.hit_sphere(scene.lights[0].render_sphere):
+        #     # draw the light
+        #     col = Vec3(1,1,0)
         else:
             # draw the background
             col = helpers.color(self)
@@ -113,6 +103,12 @@ class Vec3():
     def get_unit(self):
         length = self.get_length()
         return Vec3(self.x / length, self.y / length, self.z / length)
+
+    def get_rgb(self):
+        return (self.x * 255, self.y * 255, self.z * 255)
+
+    def get_squared(self):
+        return self.x**2 + self.y**2 + self.z**2
     
     def dot(self, other):
         return self.x * other.x + self.y * other.y + self.z * other.z
@@ -135,9 +131,6 @@ class Vec3():
             return Vec3(self.x / other.x, self.y / other.y, self.z / other.z)
         else:
             return Vec3(self.x / other, self.y / other, self.z / other)
-
-    def get_rgb(self):
-        return (self.x * 255, self.y * 255, self.z * 255)
 
     def __str__(self):
         return str(self.get_tuple())

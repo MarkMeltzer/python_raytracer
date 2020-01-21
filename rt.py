@@ -15,8 +15,8 @@ def render(scene, cam=Camera(200, 100), num_rays=1):
             
             # shoot multiple rays within pixel
             for i in range(num_rays):
-                ray_x = world_x + rnd.random() * cam.x_step
-                ray_y = world_y + rnd.random() * cam.y_step
+                ray_x = world_x + rnd.uniform(0,1) * cam.x_step
+                ray_y = world_y + rnd.uniform(0,1) * cam.y_step
 
                 # shoot ray through pixel
                 ray = Ray(Vec3(0,0,0), Vec3(ray_x, ray_y, -1))
@@ -41,10 +41,11 @@ def main():
         scene.add_light(Light(Vec3(.75,.5,-2)))
         scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4)) # blue sphere
         scene.add_scene_object(Sphere(Vec3(0,0,-2), 0.5, Vec3(0,1,0))) # green sphere
+        scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0))) # green sphere
         scene.add_scene_object(Sphere(Vec3(red_x,.5,red_z), 0.3, Vec3(1,0,0))) # red sphere
 
         # save final image
-        image = Image.fromarray(render(scene, camera, num_rays=25))
+        image = Image.fromarray(render(scene, camera, num_rays=10))
         image.save(f"imgs/test{i:03}.png")
 
         print(f"i:{i}, x:{red_x}, z:{red_z}")
