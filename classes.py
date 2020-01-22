@@ -42,35 +42,39 @@ class Ray():
         else:
             return None
 
-    def trace(self, scene):
+    def trace(self, scene, num_bounces=0):
+        num_bounces += 1
+        if num_bounces > 3:
+            return helpers.color(self)
+
         # check for hits and get hits with lowest ray parameter
         hit_result = self.get_intersection(scene.scene_objects)
 
         # if there was a hit draw it, else draw background
         if hit_result:
             # trace a new ray in a random direction
-            # new_origin = self.get_point(hit_result[0])
-            # new_target = new_origin + hit_result[1].get_normal(new_origin) + helpers.random_point()
-            # new_direction = (new_target - new_origin).get_unit()
-            # new_ray = Ray(new_origin, new_direction)
+            new_origin = self.get_point(hit_result[0])
+            new_target = new_origin + hit_result[1].get_normal(new_origin) + helpers.random_point()
+            new_direction = (new_target - new_origin).get_unit()
+            new_ray = Ray(new_origin, new_direction)
 
-            # trace shadow ray
-            hit_point = self.get_point(hit_result[0])
-            shadow_origin = hit_point + hit_result[1].get_normal(hit_point) * 0.001
-            shadow_direction = (scene.lights[0].position - shadow_origin).get_unit()
-            shadow_ray = Ray(shadow_origin, shadow_direction)
+            # # trace shadow ray
+            # hit_point = self.get_point(hit_result[0])
+            # shadow_origin = hit_point + hit_result[1].get_normal(hit_point) * 0.001
+            # shadow_direction = (scene.lights[0].position - shadow_origin).get_unit()
+            # shadow_ray = Ray(shadow_origin, shadow_direction)
             
-            scene_without_self = scene.scene_objects[:]
-            scene_without_self.remove(hit_result[1])
+            # scene_without_self = scene.scene_objects[:]
+            # scene_without_self.remove(hit_result[1])
 
-            shadow_result = shadow_ray.get_intersection(scene.scene_objects, any_hit=True)
-            if shadow_result:
-                # col = shadow_result[1].color_vector
-                col = Vec3(0,0,0)
-            else:
-                col = helpers.distance_to_greyscale(hit_result[0], min_value=0, max_value=3)
-                # col = hit_result[1].color_vector
-            # col  = new_ray.trace(scene) * 0.5
+            # shadow_result = shadow_ray.get_intersection(scene.scene_objects, any_hit=True)
+            # if shadow_result:
+            #     # col = shadow_result[1].color_vector
+            #     col = Vec3(0,0,0)
+            # else:
+            #     col = helpers.distance_to_greyscale(hit_result[0], min_value=0, max_value=3)
+            #     # col = hit_result[1].color_vector
+            col  = new_ray.trace(scene, num_bounces=num_bounces) * 0.5
         elif self.hit_sphere(scene.lights[0].render_sphere):
             # draw the light
             col = Vec3(1,1,0)

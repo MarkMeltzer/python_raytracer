@@ -36,7 +36,7 @@ def main():
     # set resolution and create pixel array
     camera = Camera(200, 100)
 
-    for i, angle in enumerate(np.linspace(0,math.pi*2,12)):
+    for i, angle in enumerate(np.linspace(0,math.pi*2,1)):
         red_x = math.cos(angle)
         red_z = math.sin(angle) - 1.5
 
@@ -52,7 +52,7 @@ def main():
         scene.add_scene_object(Sphere(Vec3(.75,.5,-1.5), 0.3, Vec3(1,0,0))) # red sphere
 
         # save final image
-        image = Image.fromarray(render(scene, camera, num_rays=1))
+        image = Image.fromarray(render(scene, camera, num_rays=25))
         image.save(f"imgs/test{i:03}.png")
 
         print(f"i:{i}, x:{red_x}, z:{red_z}")
