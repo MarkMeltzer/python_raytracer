@@ -2,10 +2,10 @@ import math
 import numpy as np
 from classes import *
 
-v1 = Vec3(1,2,3)
-v2 = Vec3(4,5,6)
-l = [v1,v2]
-print(sum(l))
+# v1 = Vec3(1,2,3)
+# v2 = Vec3(4,5,6)
+# l = [v1,v2]
+# print(sum(l))
 
 
 # x_res = 13
@@ -23,8 +23,8 @@ print(sum(l))
 # use "x/y_step * randfloat(0,1)" to get random point in pixel for averaging.
 
 
-# for angle in np.linspace(0,math.pi*2,5):
-#     x = math.cos(angle)
-#     z = math.sin(angle) - 1.5
+for angle in np.linspace(0,math.pi*2,10):
+    x = math.cos(-angle)
+    z = math.sin(-angle) - 1.5
 
-#     print(f"x:{x:.2f}, z:{z:.2f}")
+    print(f"x:{x:.2f}, z:{z:.2f}")
