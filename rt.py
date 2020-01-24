@@ -4,6 +4,7 @@ from PIL import Image
 import math
 from classes import *
 from helpers import *
+import time
 
 def render(scene, cam=Camera(200, 100), num_rays=25):
     pixel_array = cam.get_pixel_array()
@@ -33,30 +34,33 @@ def render(scene, cam=Camera(200, 100), num_rays=25):
     return pixel_array
 
 def main():
-    # set resolution and create pixel array
-    camera = Camera(200, 100)
+    total_start = time.time()
 
-    for i, angle in enumerate(np.linspace(0,math.pi*2,1)):
+    # set resolution and create pixel array
+    camera = Camera(400, 200)
+
+    for i, angle in enumerate(np.linspace(0,math.pi*4,12)):
+        start_time = time.time()
+
         red_x = math.cos(angle)
         red_z = math.sin(angle) - 1.5
 
-        yellow_x = math.cos(-angle)
-        yellow_z = math.sin(-angle) - 1.5
-
         # create a scene
         scene = Scene()
-        scene.add_light(Light(Vec3(red_x,.5,red_z)))
+        scene.add_light(Light(Vec3(1,.5,-1)))
         scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4)) # blue sphere
-        scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(0,1,0))) # green sphere
+        scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(0,1,0), reflect=True)) # green sphere
         scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0))) # yellow sphere
-        scene.add_scene_object(Sphere(Vec3(.75,.5,-1.5), 0.3, Vec3(1,0,0))) # red sphere
+        # scene.add_scene_object(Sphere(Vec3(.75,0,-2), 0.3, Vec3(1,0,0))) # red sphere
+        scene.add_scene_object(Sphere(Vec3(red_x,0,red_z), 0.3, Vec3(1,0,0), reflect=True)) # red sphere
 
         # save final image
-        image = Image.fromarray(render(scene, camera, num_rays=25))
+        image = Image.fromarray(render(scene, camera, num_rays=1))
         image.save(f"imgs/test{i:03}.png")
 
-        print(f"i:{i}, x:{red_x}, z:{red_z}")
+        print(f"Frame {i} done in {time.time() - start_time:.3f} seconds")
 
+    print(f"Render completed in {time.time() - total_start:.3f} seconds!")
 
 if __name__ == "__main__":
     main()

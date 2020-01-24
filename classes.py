@@ -44,7 +44,7 @@ class Ray():
 
     def trace(self, scene, num_bounces=0):
         num_bounces += 1
-        if num_bounces > 3:
+        if num_bounces > 4:
             return helpers.color(self)
 
         # check for hits and get hits with lowest ray parameter
@@ -52,37 +52,36 @@ class Ray():
 
         # if there was a hit draw it, else draw background
         if hit_result:
-            # trace a new ray in a random direction
-            new_origin = self.get_point(hit_result[0])
-            new_target = new_origin + hit_result[1].get_normal(new_origin) + helpers.random_point()
-            new_direction = (new_target - new_origin).get_unit()
-            new_ray = Ray(new_origin, new_direction)
+            hit_point = self.get_point(hit_result[0])
+            hit_normal = hit_result[1].get_normal(hit_point)
 
-            # # trace shadow ray
-            # hit_point = self.get_point(hit_result[0])
-            # shadow_origin = hit_point + hit_result[1].get_normal(hit_point) * 0.001
-            # shadow_direction = (scene.lights[0].position - shadow_origin).get_unit()
-            # shadow_ray = Ray(shadow_origin, shadow_direction)
+            # trace shadow ray
+            shadow_origin = hit_point + hit_normal * 0.001
+            shadow_direction = (scene.lights[0].position - shadow_origin).get_unit()
+            shadow_ray = Ray(shadow_origin, shadow_direction)
+            shadow_result = shadow_ray.get_intersection(scene.scene_objects, any_hit=True)
             
-            # scene_without_self = scene.scene_objects[:]
-            # scene_without_self.remove(hit_result[1])
+            # hit is in shadow
+            if shadow_result:
+                # col = shadow_result[1].color_vector
+                return Vec3(0,0,0)
+            
+            # hit surface is reflective
+            if hit_result[1].reflect:
+                reflect_origin = shadow_origin
+                reflect_direction = self.direction - hit_normal * 2 * hit_normal.dot(self.direction)
+                reflect_ray = Ray(reflect_origin, reflect_direction)
+                return reflect_ray.trace(scene, num_bounces=num_bounces) * 0.8
+                # return Vec3(1,1,1)
 
-            # shadow_result = shadow_ray.get_intersection(scene.scene_objects, any_hit=True)
-            # if shadow_result:
-            #     # col = shadow_result[1].color_vector
-            #     col = Vec3(0,0,0)
-            # else:
-            #     col = helpers.distance_to_greyscale(hit_result[0], min_value=0, max_value=3)
-            #     # col = hit_result[1].color_vector
-            col  = new_ray.trace(scene, num_bounces=num_bounces) * 0.5
+            # return color of object
+            return hit_result[1].color_vector
         elif self.hit_sphere(scene.lights[0].render_sphere):
             # draw the light
-            col = Vec3(1,1,0)
+            return Vec3(1,1,0)
         else:
             # draw the background
-            col = helpers.color(self)
-        
-        return col
+            return helpers.color(self)
 
     def hit_sphere(self, sphere, t_min=0, t_max=50):
         # notes:
@@ -115,27 +114,6 @@ class Ray():
 
         # no hit
         return None
-
-    # def hit_sphere(self, sphere, t_min=0, t_max=50):
-    #     D = self.direction
-    #     O = self.origin
-    #     S = sphere.center
-    #     R = sphere.radius
-
-    #     a = D.dot(D)
-    #     OS = O - S
-    #     b = 2 * D.dot(OS)
-    #     c = OS.dot(OS) - R * R
-    #     disc = b * b - 4 * a * c
-    #     if disc > 0:
-    #         distSqrt = np.sqrt(disc)
-    #         q = (-b - distSqrt) / 2.0 if b < 0 else (-b + distSqrt) / 2.0
-    #         t0 = q / a
-    #         t1 = c / q
-    #         t0, t1 = min(t0, t1), max(t0, t1)
-    #         if t1 >= 0:
-    #             return t1 if t0 < 0 else t0
-    #     return None
 
     def __str__(self):
         return f"o: {self.origin}, d: {self.direction}"
@@ -188,10 +166,11 @@ class Vec3():
         return str(self.get_tuple())
 
 class Sphere():
-    def __init__(self, center, radius, color_vector=Vec3(0,0,1)):
+    def __init__(self, center, radius, color_vector=Vec3(0,0,1), reflect=False):
         self.center = center
         self.radius = radius
         self.color_vector = color_vector
+        self.reflect = reflect
 
     def get_normal(self, point):
         normal = (point - self.center).get_unit()
