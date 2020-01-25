@@ -49,23 +49,30 @@ class Renderer():
 
         # if there was a hit draw it, else draw background
         if hit_result:
+            col = hit_result[1].color_vector
             hit_point = ray.get_point(hit_result[0])
             hit_normal = hit_result[1].get_normal(hit_point)
-            ray_origin = hit_point + hit_normal * 0.001
+            new_ray_origin = hit_point + hit_normal * 0.001
             light = self.scene.lights[0]
-
-            # hard shadows
-            if self.hard_shadows:
-                if self.get_hard_shadow(ray_origin, light):
-                    return Vec3(0,0,0)
             
             # reflection
             if self.reflection and hit_result[1].reflect:
-                reflect_ray = self.get_reflected_ray(ray_origin, ray.direction, hit_normal)
-                return self.trace(reflect_ray, num_bounces=num_bounces) * 0.8
+                reflect_ray = self.get_reflected_ray(new_ray_origin, ray.direction, hit_normal)
+                reflect_col = self.trace(reflect_ray, num_bounces=num_bounces)
+                col = reflect_col * hit_result[1].reflect + col * (1 - hit_result[1].reflect)
+            
+            # hard shadows
+            if self.hard_shadows:
+                if self.get_hard_shadow(new_ray_origin, light):
+                    col /= 5
+            
+            # lambert shading
+            if self.lambert:
+                sh = self.get_lambert_shading(hit_normal, (light.position - new_ray_origin), 3)
+                col *= sh
 
             # return color of object
-            return hit_result[1].color_vector
+            return col
         elif ray.hit_sphere(self.scene.lights[0].render_sphere):
             # draw the light
             return Vec3(1,1,0)
@@ -85,6 +92,9 @@ class Renderer():
     def get_reflected_ray(self, reflect_origin, incident_direction, hit_normal):
         reflect_direction = incident_direction - hit_normal * 2 * hit_normal.dot(incident_direction)
         return Ray(reflect_origin, reflect_direction)
+
+    def get_lambert_shading(self, normal, light_ray, albedo):
+        return albedo / math.pi * max(0, normal.dot(light_ray.get_unit()))
 
 
 class Camera():
@@ -246,3 +256,7 @@ class Light():
     def __init__(self, position):
         self.position = position
         self.render_sphere = Sphere(position, 0.1)
+
+class Material():
+    def __init__(self, albedo=0.18):
+        self.albedo = albedo
