@@ -1,6 +1,91 @@
 import math
 import numpy as np
 import helpers
+import random as rnd
+
+class Renderer():
+    def __init__(self, camera, scene, settings):
+        self.cam = camera
+        self.scene = scene
+        
+        self.hard_shadows = settings["hard_shadows"]
+        self.reflection = settings["reflection"]
+        self.lambert = settings["lambert"]
+
+    def render(self, num_rays=25):
+        pixel_array = self.cam.get_pixel_array()
+
+        # iterate over all pixels
+        for screen_y, world_y in enumerate(np.linspace(-1 * self.cam.screen_ratio, 1 * self.cam.screen_ratio, self.cam.y_res)):
+            for screen_x, world_x in enumerate(np.linspace(-1, 1, self.cam.x_res)):
+                col = Vec3(0,0,0)
+                
+                # shoot multiple rays within pixel
+                for _ in range(num_rays):
+                    if num_rays > 1:
+                        ray_x = world_x + rnd.uniform(0,1) * self.cam.x_step
+                        ray_y = world_y + rnd.uniform(0,1) * self.cam.y_step
+                    else:
+                        ray_x = world_x
+                        ray_y = world_y
+
+                    # shoot ray through pixel
+                    ray = Ray(Vec3(0,0,0), Vec3(ray_x, ray_y, -1))
+
+                    col += self.trace(ray)
+
+                # calculate the average pixel color
+                col /= num_rays
+                pixel_array[self.cam.y_res - 1 - screen_y][screen_x] = col.get_rgb()
+        return pixel_array
+
+    def trace(self, ray, num_bounces=0):
+        num_bounces += 1
+        if num_bounces > 4:
+            return helpers.color(ray)
+
+        # check for hits and get hits with lowest ray parameter
+        hit_result = ray.get_intersection(self.scene.scene_objects)
+
+        # if there was a hit draw it, else draw background
+        if hit_result:
+            hit_point = ray.get_point(hit_result[0])
+            hit_normal = hit_result[1].get_normal(hit_point)
+            ray_origin = hit_point + hit_normal * 0.001
+            light = self.scene.lights[0]
+
+            # hard shadows
+            if self.hard_shadows:
+                if self.get_hard_shadow(ray_origin, light):
+                    return Vec3(0,0,0)
+            
+            # reflection
+            if self.reflection and hit_result[1].reflect:
+                reflect_ray = self.get_reflected_ray(ray_origin, ray.direction, hit_normal)
+                return self.trace(reflect_ray, num_bounces=num_bounces) * 0.8
+
+            # return color of object
+            return hit_result[1].color_vector
+        elif ray.hit_sphere(self.scene.lights[0].render_sphere):
+            # draw the light
+            return Vec3(1,1,0)
+        else:
+            # draw the background
+            return helpers.color(ray)
+
+    def get_hard_shadow(self, shadow_origin, light):
+        shadow_direction = (light.position - shadow_origin).get_unit()
+        shadow_ray = Ray(shadow_origin, shadow_direction)
+        shadow_result = shadow_ray.get_intersection(self.scene.scene_objects, any_hit=True)
+
+        if shadow_result:
+            return Vec3(0,0,0)
+        return None
+
+    def get_reflected_ray(self, reflect_origin, incident_direction, hit_normal):
+        reflect_direction = incident_direction - hit_normal * 2 * hit_normal.dot(incident_direction)
+        return Ray(reflect_origin, reflect_direction)
+
 
 class Camera():
     def __init__(self, x_res, y_res):
@@ -41,47 +126,6 @@ class Ray():
             return min_t, min_object
         else:
             return None
-
-    def trace(self, scene, num_bounces=0):
-        num_bounces += 1
-        if num_bounces > 4:
-            return helpers.color(self)
-
-        # check for hits and get hits with lowest ray parameter
-        hit_result = self.get_intersection(scene.scene_objects)
-
-        # if there was a hit draw it, else draw background
-        if hit_result:
-            hit_point = self.get_point(hit_result[0])
-            hit_normal = hit_result[1].get_normal(hit_point)
-
-            # trace shadow ray
-            shadow_origin = hit_point + hit_normal * 0.001
-            shadow_direction = (scene.lights[0].position - shadow_origin).get_unit()
-            shadow_ray = Ray(shadow_origin, shadow_direction)
-            shadow_result = shadow_ray.get_intersection(scene.scene_objects, any_hit=True)
-            
-            # hit is in shadow
-            if shadow_result:
-                # col = shadow_result[1].color_vector
-                return Vec3(0,0,0)
-            
-            # hit surface is reflective
-            if hit_result[1].reflect:
-                reflect_origin = shadow_origin
-                reflect_direction = self.direction - hit_normal * 2 * hit_normal.dot(self.direction)
-                reflect_ray = Ray(reflect_origin, reflect_direction)
-                return reflect_ray.trace(scene, num_bounces=num_bounces) * 0.8
-                # return Vec3(1,1,1)
-
-            # return color of object
-            return hit_result[1].color_vector
-        elif self.hit_sphere(scene.lights[0].render_sphere):
-            # draw the light
-            return Vec3(1,1,0)
-        else:
-            # draw the background
-            return helpers.color(self)
 
     def hit_sphere(self, sphere, t_min=0, t_max=50):
         # notes:
