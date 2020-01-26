@@ -11,6 +11,7 @@ class Renderer():
         self.hard_shadows = settings["hard_shadows"]
         self.reflection = settings["reflection"]
         self.lambert = settings["lambert"]
+        self.phong = settings["phong"]
 
     def render(self, num_rays=25):
         pixel_array = self.cam.get_pixel_array()
@@ -56,10 +57,10 @@ class Renderer():
             light = self.scene.lights[0]
             
             # reflection
-            if self.reflection and hit_result[1].reflect:
+            if self.reflection and hit_result[1].mat.reflect:
                 reflect_ray = self.get_reflected_ray(new_ray_origin, ray.direction, hit_normal)
                 reflect_col = self.trace(reflect_ray, num_bounces=num_bounces)
-                col = reflect_col * hit_result[1].reflect + col * (1 - hit_result[1].reflect)
+                col = reflect_col * hit_result[1].mat.reflect + col * (1 - hit_result[1].mat.reflect)
             
             # hard shadows
             if self.hard_shadows:
@@ -67,15 +68,32 @@ class Renderer():
                     col /= 5
             
             # lambert shading
-            if self.lambert:
-                sh = self.get_lambert_shading(hit_normal, (light.position - new_ray_origin), 3)
-                col *= sh
+            diffuse = 0
+            if self.lambert or self.phong:
+                diffuse = self.get_lambert_shading(hit_normal, (light.position - new_ray_origin), hit_result[1].mat.albedo)
+                diffuse = col * diffuse
+
+            # specular shading
+            specular = 0
+            if self.phong:
+                reflect = self.get_reflected_ray(new_ray_origin, (light.position - new_ray_origin).get_unit(), hit_normal)
+                specular = max(0, ray.direction.dot(reflect.direction))**500
+                specular = Vec3(1,1,1) * specular
 
             # return color of object
-            return col
-        elif ray.hit_sphere(self.scene.lights[0].render_sphere):
-            # draw the light
-            return Vec3(1,1,0)
+            if self.lambert:
+                col = diffuse
+
+            if self.phong:
+                Ks = hit_result[1].mat.Ks
+                Kd = hit_result[1].mat.Kd
+                Ka = self.scene.Ka
+                col = Vec3(1,1,1) * Ka + diffuse * Kd + specular * Ks
+            
+            return col.clip(0,1)
+        # elif ray.hit_sphere(self.scene.lights[0].render_sphere):
+        #     # draw the light
+        #     return Vec3(1,1,0)
         else:
             # draw the background
             return helpers.color(ray)
@@ -94,7 +112,7 @@ class Renderer():
         return Ray(reflect_origin, reflect_direction)
 
     def get_lambert_shading(self, normal, light_ray, albedo):
-        return albedo / math.pi * max(0, normal.dot(light_ray.get_unit()))
+        return albedo * max(0, normal.dot(light_ray.get_unit()))
 
 
 class Camera():
@@ -197,6 +215,19 @@ class Vec3():
     def dot(self, other):
         return self.x * other.x + self.y * other.y + self.z * other.z
 
+    def clip(self, min_val, max_val):
+        x = max(min_val, self.x)
+        x = min(max_val, self.x)
+
+        y = max(min_val, self.y)
+        y = min(max_val, self.y)
+
+        z = max(min_val, self.z)
+        z = min(max_val, self.z)
+
+        return Vec3(x,y,z)
+
+
     def __add__(self, other):
         return Vec3(self.x + other.x, self.y + other.y, self.z + other.z)
     __radd__ = __add__
@@ -219,12 +250,21 @@ class Vec3():
     def __str__(self):
         return str(self.get_tuple())
 
+
+class Material():
+    def __init__(self, albedo=0.8, Kd=1, Ks=.5, n=500, reflect=0):
+        self.albedo = albedo    # general factor of light reflected
+        self.Kd = Kd            # specular parameter, [0-1], "diffuseness"
+        self.Ks = Ks            # specular parameter, [0-1], "glossyness"
+        self.n = n              # specular highlight size, n > 0 
+        self.reflect = reflect  # reflectiveness, [0-1], factor of how mirror-like a surface is
+
 class Sphere():
-    def __init__(self, center, radius, color_vector=Vec3(0,0,1), reflect=False):
+    def __init__(self, center, radius, color_vector=Vec3(0,0,1), mat=Material()):
         self.center = center
         self.radius = radius
         self.color_vector = color_vector
-        self.reflect = reflect
+        self.mat = mat
 
     def get_normal(self, point):
         normal = (point - self.center).get_unit()
@@ -239,9 +279,10 @@ class Plane():
         self.normal = normal.get_unit()
 
 class Scene():
-    def __init__(self):
+    def __init__(self, Ka=0.1):
         self.lights = []
         self.scene_objects = []
+        self.Ka = Ka        # ambient light factor
 
     def add_scene_object(self, scene_object):
         self.scene_objects.append(scene_object)
@@ -256,7 +297,3 @@ class Light():
     def __init__(self, position):
         self.position = position
         self.render_sphere = Sphere(position, 0.1)
-
-class Material():
-    def __init__(self, albedo=0.18):
-        self.albedo = albedo

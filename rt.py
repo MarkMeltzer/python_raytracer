@@ -10,7 +10,7 @@ def main():
     total_start = time.time()
 
     # set resolution and create pixel array
-    for i, angle in enumerate(np.linspace(0,math.pi*4, 120)):
+    for i, angle in enumerate(np.linspace(0,math.pi*4, 24)):
         start_time = time.time()
 
         red_x = math.cos(angle)
@@ -19,17 +19,17 @@ def main():
         # create a scene
         scene = Scene()
         scene.add_light(Light(Vec3(1,.5,-1)))
-        scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4)) # blue sphere
-        scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(1,1,1), reflect=1)) # white sphere
-        scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0), reflect=0.25)) # yellow sphere
-        # scene.add_scene_object(Sphere(Vec3(.75,0,-2), 0.3, Vec3(1,0,0))) # red sphere
-        scene.add_scene_object(Sphere(Vec3(red_x,0,red_z), 0.3, Vec3(1,0,0))) # red sphere
+        scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4, mat=Material(reflect=1))) # blue sphere
+        scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(1,1,1), Material(reflect=0.8, Ks=1))) # white sphere
+        scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0), Material(reflect=0.25))) # yellow sphere
+        scene.add_scene_object(Sphere(Vec3(red_x,0,red_z), 0.3, Vec3(1,0,0), Material(Ks=1, n=500))) # red sphere
 
         camera = Camera(400, 200)
         settings = {
             "hard_shadows" : True,
             "reflection" : True,
-            "lambert" : True
+            "lambert" : False,
+            "phong" : True
         }
         R = Renderer(camera, scene, settings)
 
