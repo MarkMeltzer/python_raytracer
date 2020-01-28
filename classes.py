@@ -46,7 +46,7 @@ class Renderer():
             return helpers.color(ray)
 
         # check for hits and get hits with lowest ray parameter
-        hit_result = ray.get_intersection(self.scene.scene_objects)
+        hit_result = self.get_intersection(self.scene.scene_objects, ray)
 
         # if there was a hit draw it, else draw background
         if hit_result:
@@ -65,7 +65,7 @@ class Renderer():
             # hard shadows
             if self.hard_shadows:
                 if self.get_hard_shadow(new_ray_origin, light):
-                    col /= 5
+                    col *= 0.2
             
             # lambert shading
             diffuse = 0
@@ -101,7 +101,7 @@ class Renderer():
     def get_hard_shadow(self, shadow_origin, light):
         shadow_direction = (light.position - shadow_origin).get_unit()
         shadow_ray = Ray(shadow_origin, shadow_direction)
-        shadow_result = shadow_ray.get_intersection(self.scene.scene_objects, any_hit=True)
+        shadow_result = self.get_intersection(self.scene.scene_objects, shadow_ray, any_hit=True)
 
         if shadow_result:
             return Vec3(0,0,0)
@@ -113,6 +113,27 @@ class Renderer():
 
     def get_lambert_shading(self, normal, light_ray, albedo):
         return albedo * max(0, normal.dot(light_ray.get_unit()))
+
+    def get_intersection(self, scene_objects, ray, any_hit=False):
+        # find the hit object with the smallest parameter
+        min_t = np.inf
+        min_object = None
+        for scene_object in scene_objects:
+            t = scene_object.get_hit(ray)
+
+            # there is a hit and its the new closest hit
+            if t and t < min_t:
+                min_t = t
+                min_object = scene_object
+
+                # stop early when any object is hit
+                if any_hit:
+                    break
+        
+        if min_object:
+            return min_t, min_object
+        else:
+            return None
 
 
 class Camera():
@@ -133,59 +154,6 @@ class Ray():
     
     def get_point(self, t):
         return self.origin + self.direction * t
-
-    def get_intersection(self, scene_objects, any_hit=False):
-        # find the hit object with the smallest parameter
-        min_t = np.inf
-        min_object = None
-        for scene_object in scene_objects:
-            t = self.hit_sphere(scene_object)
-
-            # there is a hit and its the new closest hit
-            if t and t < min_t:
-                min_t = t
-                min_object = scene_object
-
-                # stop early when any object is hit
-                if any_hit:
-                    break
-        
-        if min_object:
-            return min_t, min_object
-        else:
-            return None
-
-    def hit_sphere(self, sphere, t_min=0, t_max=50):
-        # notes:
-        # a = ray.direction dot ray.direction, since directions are unit vectors
-        # a is always 1
-
-        oc = self.origin - sphere.center
-        a = 1
-        b = 2 * oc.dot(self.direction)
-        c = oc.dot(oc) - sphere.radius * sphere.radius
-        discriminant = b * b - 4 * a * c
-
-        if discriminant > 0:
-            sqrt_discriminant = math.sqrt(discriminant)
-
-            t0 = (-b - sqrt_discriminant) / 2
-            t1 = (-b + sqrt_discriminant) / 2
-            
-            # make sure t0 is the lower t
-            t0, t1 = min(t0, t1), max(t0, t1)
-
-            # don't draw stuff behind the origin
-            if t1 >= 0:
-                if t0 < 0:
-                    # origin is within the sphere
-                    return t1 if t1 > t_min or t1 < t_max else None
-                else:
-                    # either single hit or hit with lowest t
-                    return t0 if t0 > t_min or t0 < t_max else None
-
-        # no hit
-        return None
 
     def __str__(self):
         return f"o: {self.origin}, d: {self.direction}"
@@ -227,6 +195,11 @@ class Vec3():
 
         return Vec3(x,y,z)
 
+    def crossproduct(self, other):
+        x = self.y * other.z - self.z * other.y
+        y = self.z * other.x - self.x  * other.z
+        z = self.x * other.y - self.y * other.x
+        return Vec3(x,y,z)
 
     def __add__(self, other):
         return Vec3(self.x + other.x, self.y + other.y, self.z + other.z)
@@ -270,8 +243,127 @@ class Sphere():
         normal = (point - self.center).get_unit()
         return normal
 
+    def get_hit(self, ray, t_min=0, t_max=50):
+        # notes:
+        # a = ray.direction dot ray.direction, since directions are unit vectors
+        # a is always 1
+
+        oc = ray.origin - self.center
+        a = 1
+        b = 2 * oc.dot(ray.direction)
+        c = oc.dot(oc) - self.radius * self.radius
+        discriminant = b * b - 4 * a * c
+
+        if discriminant > 0:
+            sqrt_discriminant = math.sqrt(discriminant)
+
+            t0 = (-b - sqrt_discriminant) / 2
+            t1 = (-b + sqrt_discriminant) / 2
+            
+            # make sure t0 is the lower t
+            t0, t1 = min(t0, t1), max(t0, t1)
+
+            # don't draw stuff behind the origin
+            if t1 >= 0:
+                if t0 < 0:
+                    # origin is within the sphere
+                    return t1 if t1 > t_min or t1 < t_max else None
+                else:
+                    # either single hit or hit with lowest t
+                    return t0 if t0 > t_min or t0 < t_max else None
+
+        # no hit
+        return None
+
     def __str__(self):
         return f"sphere with color: {self.color_vector.get_rgb()}"
+
+class Triangle():
+    def __init__(self, v0, v1, v2, color_vector=Vec3(1,0,0), mat=Material()):
+        self.v0 = v0
+        self.v1 = v1
+        self.v2 = v2
+        self.color_vector = color_vector
+        self.mat = mat
+        self.normal = self.calculate_normal()
+
+    def calculate_normal(self):
+        a = self.v1 - self.v0
+        b = self.v2 - self.v0
+        N = a.crossproduct(b)
+        return N
+
+    def get_normal(self, _):
+        return self.normal
+
+    def get_hit(self, ray):
+        # source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
+        ### get normal ###
+        N = self.normal
+
+        ### check intersection with plane ###
+        NdotDir = N.dot(ray.direction)
+
+        if abs(NdotDir) < 0.001:
+            # plane is parallel to ray, not intersection
+            return None
+
+        D = N.dot(self.v0)
+        t = (N.dot(ray.origin) + D) / NdotDir
+        
+        if t < 0:
+            # ray is behind camera
+            return None
+
+        P = ray.origin + ray.direction * t
+
+        ### check if p is in triangle using inside out test ###
+        # edge 0
+        edge0 = self.v1 - self.v0
+        C = edge0.crossproduct(P - self.v0)
+        if N.dot(C) < 0:
+            # P is on the right side of the edge, so outside of the triangle
+            return None
+
+        # edge 1
+        edge1 = self.v2 - self.v1
+        C = edge1.crossproduct(P - self.v1)
+        if N.dot(C) < 0:
+            # P is on the right side of the edge, so outside of the triangle
+            return None
+
+        # edge 2
+        edge2 = self.v0 - self.v2
+        C = edge2.crossproduct(P - self.v2)
+        if N.dot(C) < 0:
+            # P is on the right side of the edge, so outside of the triangle
+            return None
+
+        return t
+    
+    def translate_x(self, dist):
+        self.v0.x += dist
+        self.v1.x += dist
+        self.v2.x += dist
+    
+    def translate_y(self, dist):
+        self.v0.y += dist
+        self.v1.y += dist
+        self.v2.y += dist
+
+    def translate_z(self, dist):
+        self.v0.z += dist
+        self.v1.z += dist
+        self.v2.z += dist
+
+    def translate(self, x_dist=0, y_dist=0, z_dist=0):
+        self.translate_x(x_dist)
+        self.translate_y(y_dist)
+        self.translate_z(z_dist)
+
+    def __str__(self):
+        return f"triangle with vertices: {self.v0}, {self.v1} and {self.v2}"
+
 
 class Plane():
     def __init__(self, center, normal):

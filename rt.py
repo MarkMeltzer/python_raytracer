@@ -10,26 +10,31 @@ def main():
     total_start = time.time()
 
     # set resolution and create pixel array
-    for i, angle in enumerate(np.linspace(0,math.pi*4, 24)):
+    for i, angle in enumerate(np.linspace(0,math.pi*4, 1)):
+    # for i, place in enumerate(np.linspace(0,-3, 12)):
         start_time = time.time()
 
-        red_x = math.cos(angle)
-        red_z = math.sin(angle) - 1.5
+        # red_x = math.cos(angle)
+        # red_z = math.sin(angle) - 1.5
 
         # create a scene
         scene = Scene()
         scene.add_light(Light(Vec3(1,.5,-1)))
-        scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4, mat=Material(reflect=1))) # blue sphere
-        scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(1,1,1), Material(reflect=0.8, Ks=1))) # white sphere
-        scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0), Material(reflect=0.25))) # yellow sphere
-        scene.add_scene_object(Sphere(Vec3(red_x,0,red_z), 0.3, Vec3(1,0,0), Material(Ks=1, n=500))) # red sphere
+        # scene.add_scene_object(Sphere(Vec3(0,-4.3,-2), 4, mat=Material(reflect=0))) # blue sphere
+        red_triangle = Triangle(Vec3(-1,0,-2), Vec3(1,0,-2), Vec3(0,1,-2))
+        blue_triangle = Triangle(Vec3(-1,0,-2), Vec3(1,0,-2), Vec3(0,-1,-2), color_vector=Vec3(0,0,1))
+        scene.add_scene_object(red_triangle)
+        scene.add_scene_object(blue_triangle)
+        # scene.add_scene_object(Sphere(Vec3(0,-.25,-2), 0.5, Vec3(1,1,1), Material(reflect=0.8, Ks=1))) # white sphere
+        # scene.add_scene_object(Sphere(Vec3(-1,0,-2), 0.5, Vec3(1,1,0), Material(reflect=0.25))) # yellow sphere
+        # scene.add_scene_object(Sphere(Vec3(red_x,0,red_z), 0.3, Vec3(1,0,0), Material(Ks=1, n=500))) # red sphere
 
         camera = Camera(400, 200)
         settings = {
-            "hard_shadows" : True,
-            "reflection" : True,
-            "lambert" : False,
-            "phong" : True
+            "hard_shadows" : False,
+            "reflection" : False,
+            "lambert" : True,
+            "phong" : False
         }
         R = Renderer(camera, scene, settings)
 
