@@ -2,11 +2,13 @@ import math
 import numpy as np
 import helpers
 import random as rnd
+import copy
 
 class Renderer():
-    def __init__(self, camera, scene, settings):
+    def __init__(self, camera, scene, settings, print_progress=False):
         self.cam = camera
         self.scene = scene
+        self.print_progress = print_progress
         
         self.hard_shadows = settings["hard_shadows"]
         self.reflection = settings["reflection"]
@@ -18,7 +20,10 @@ class Renderer():
 
         # iterate over all pixels
         for screen_y, world_y in enumerate(np.linspace(-1 * self.cam.screen_ratio, 1 * self.cam.screen_ratio, self.cam.y_res)):
+            if self.print_progress:
+                print(f"Rendering line: {screen_y}")
             for screen_x, world_x in enumerate(np.linspace(-1, 1, self.cam.x_res)):
+                
                 col = Vec3(0,0,0)
                 
                 # shoot multiple rays within pixel
@@ -279,11 +284,14 @@ class Sphere():
         return f"sphere with color: {self.color_vector.get_rgb()}"
 
 class Triangle():
-    def __init__(self, v0, v1, v2, color_vector=Vec3(1,0,0), mat=Material()):
+    def __init__(self, v0, v1, v2, color_vector=None, mat=Material()):
         self.v0 = v0
         self.v1 = v1
         self.v2 = v2
-        self.color_vector = color_vector
+        if color_vector == None:
+            self.color_vector = helpers.random_color()
+        else:
+            self.color_vector = color_vector
         self.mat = mat
         self.normal = self.calculate_normal()
 
@@ -364,11 +372,51 @@ class Triangle():
     def __str__(self):
         return f"triangle with vertices: {self.v0}, {self.v1} and {self.v2}"
 
+class Quad():
+    def __init__(self, lower_left, lower_right, upper_right, upper_left):
+        self.v0 = lower_left
+        self.v1 = lower_right
+        self.v2 = upper_right
+        self.v3 = upper_left
 
-class Plane():
-    def __init__(self, center, normal):
-        self.center = center
-        self.normal = normal.get_unit()
+    def get_triangles(self):
+        t1 = Triangle(copy.copy(self.v0), copy.copy(self.v1), copy.copy(self.v2))
+        t2 = Triangle(copy.copy(self.v0), copy.copy(self.v2), copy.copy(self.v3))
+        return t1, t2
+
+# THIS DOESN'T WORK YET
+# class Plane():
+#     def __init__(self, center, normal):
+#         self.center = center
+#         self.normal = normal.get_unit()
+
+# class Mesh():
+#     def __init__(self, pos=Vec3(0,0,0)):
+#         self.pos = pos
+#         self.triangles = []
+
+#     def add_triangle(self, triangle):
+#         assert type(triangle) == Triangle
+#         self.triangles.append(triangle)
+
+#     def rotate_around_y(self, rotation):
+#         cos_rot = math.cos(rotation)
+#         sin_rot = math.sin(rotation)
+#         for triangle in self.triangles:
+#             # move to origin
+#             triangle.translate(self.pos.x * -1, self.pos.y * -1, self.pos.z * -1)
+            
+#             # rotate
+#             for vertex in [triangle.v0, triangle.v1, triangle.v2]:
+#                 new_x = vertex.x * cos_rot + vertex.z * sin_rot
+#                 new_z = vertex.x * -1 * sin_rot + vertex.z * cos_rot
+#                 vertex.x = new_x
+#                 vertex.z = new_z
+
+#             # more back to position
+#             triangle.translate(self.pos.x, self.pos.y, self.pos.z)
+#             print(triangle.v0)
+# THIS DOESN'T WORK YET
 
 class Scene():
     def __init__(self, Ka=0.1):
