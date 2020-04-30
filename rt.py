@@ -21,7 +21,7 @@ def main():
         scene = Scene()
         scene.add_light(Light(Vec3(1,.5,-1)))
         
-        tris = parse_obj("lowpolytree.obj")
+        tris = parse_obj("Low_Poly_Tree_006.obj")
         for tri in tris:
             tri.translate_z(-4)
             tri.translate_z(-.25)

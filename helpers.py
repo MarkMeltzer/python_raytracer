@@ -44,8 +44,5 @@ def parse_obj(filename):
                 tris.append(t1)
                 tris.append(t2)
 
-                # tris.append(classes.Triangle(v0,v1,v2))
-                # break
-
     
     return tris
